@@ -1,0 +1,77 @@
+version: '3'
+services:
+
+  #PHP Service
+  simplifiquei-php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: digitalocean.com/php
+    container_name: simplifiquei-php
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: simplifiquei-php
+      SERVICE_TAGS: dev
+    working_dir: /srv/www
+    volumes:
+      - "nfsmount:/srv"
+      - /opt/infra/php/simplifiquei.ini:/usr/local/etc/php/conf.d/simplifiquei.ini:delegated
+    networks:
+      - simplifiquei-network
+    links:
+      - mysql:mysql  
+  mysql:
+    image: mysql:5.7.10
+    container_name: mysql
+    restart: unless-stopped
+    tty: true
+    ports:
+     - "3306:3306"
+    environment:
+        MYSQL_ROOT_PASSWORD: 12345    
+    networks:
+     - simplifiquei-network
+  db:  
+    image: postgres:12.0-alpine  
+    restart: always  
+    environment:  
+      POSTGRES_PASSWORD: 12345  
+      POSTGRES_DB: teste  
+    networks:
+      - simplifiquei-network        
+  #Nginx Service
+  simplifiquei-nginx:
+    image: nginx:alpine
+    container_name: simplifiquei-nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8000:8000"      
+      - "80:80"      
+    volumes:
+      - "nfsmount:/srv"
+      - /opt/infra/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - simplifiquei-network
+      #Nginx Service
+  simplifiquei-cache:
+    image: redis:latest
+    container_name: simplifiquei-cache
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "6379:6379"
+    networks:
+      - simplifiquei-network
+#Docker Networks
+networks:
+  simplifiquei-network:
+    driver: bridge
+volumes:
+    nfsmount:
+        driver: local
+        driver_opts:
+            type: nfs
+            o: addr=host.docker.internal,rw,nolock,hard,nointr,nfsvers=3
+            device: ":/opt"
